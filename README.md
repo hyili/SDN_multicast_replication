@@ -3,6 +3,8 @@ Using Software Defined Network, and then implement multicast module on replicati
 
 floodlight :
 -  just run it
+-  default main server ip : 10.0.0.1
+-  default backup server ip : 10.0.0.2
 
 mininet :
 -  mn --controller=remote,ip=<< floodlight ip >>,port=6653 --topo=tree,depth=2,fanout=3 --switch ovsk,protocols=OpenFlow13
