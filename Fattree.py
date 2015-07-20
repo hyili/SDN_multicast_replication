@@ -21,7 +21,7 @@ def perfTest():
 	"Create network and run simple performance test"
 	#topo = MyTopo()
 	net = Mininet( topo=None, link=TCLink, controller=RemoteController )
-	net.addController('c', controller=RemoteController, ip='127.0.0.1', port=6633)
+	net.addController('c', controller=RemoteController, ip='127.0.0.1', port=6653)
 
 	# Add hosts and switches
 	Pod_host = []
