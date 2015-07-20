@@ -106,6 +106,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	public static final String STR_RHostIP = "RHostIP";
 	public static String FHostIP = "10.0.0.2";
 	public static String RHostIP = "10.0.0.1";
+	protected String FHostMAC = "";
 	protected String RHostMAC = "";
 	
 	@Override
@@ -169,8 +170,29 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 
 		// set actions
 		List<OFAction> actions = new ArrayList<OFAction>();
-		actions.add(sw.getOFFactory().actions().buildOutput().setPort(outport).setMaxLen(0xffFFffFF).build());
+		OFActions action = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		
+		OFActionSetField setDlDst = action.buildSetField()
+		.setField(
+				oxms.buildEthDst()
+				.setValue(MacAddress.of(RHostMAC))
+				.build()
+		)
+		.build();
+		actions.add(setDlDst);
 
+		OFActionSetField setNwDst = action.buildSetField()
+		.setField(
+				oxms.buildIpv4Dst()
+				.setValue(IPv4Address.of(RHostIP))
+				.build()
+		)
+		.build();
+		actions.add(setNwDst);
+		
+		actions.add(sw.getOFFactory().actions().buildOutput().setPort(outport).setMaxLen(0xffFFffFF).build());
+		
 		pob.setActions(actions);
 
 		// If the switch doens't support buffering set the buffer id to be none
@@ -196,20 +218,47 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		sw.write(pob.build());
 	}
 	
-	public boolean pushRoute(Route route, Match match, OFPacketIn pi,
+	public boolean pushRoute(Route route_1, Route route_2, Match match, OFPacketIn pi,
 			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
 			boolean reqeustFlowRemovedNotifn, boolean doFlush,
 			OFFlowModCommand flowModCommand) {
 
 		boolean srcSwitchIncluded = false;
 
-		List<NodePortTuple> switchPortList = route.getPath();
+		List<NodePortTuple> switchPortList_1 = route_1.getPath();
+		List<NodePortTuple> switchPortList_2 = route_2.getPath();
+		int sP1_size = switchPortList_1.size();
+		int sP2_size = switchPortList_2.size();
+		int dup_num = -1;
+		DatapathId multicast_point = null;
+		OFPort multicast_orig_outport = OFPort.of(0);
 
-		for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
+		DatapathId switchDPID = null;
+		DatapathId switchDPID_1 = null;
+		DatapathId switchDPID_2 = null;
+		System.out.println("Level 4");
+		for (int indx_1 = 1, indx_2 = 1; indx_1 <= sP1_size && indx_2 <= sP2_size; indx_1 += 2, indx_2 += 2) {
+			System.out.println("Level~~~~");
+			switchDPID_1 = switchPortList_1.get(indx_1).getNodeId();
+			switchDPID_2 = switchPortList_2.get(indx_2).getNodeId();
+			System.out.println(switchDPID_1);
+			System.out.println(switchDPID_2);
+			if (switchDPID_1.equals(switchDPID_2))
+				dup_num = dup_num + 2;
+		}
+		multicast_point = switchPortList_1.get(dup_num).getNodeId();
+		
+		System.out.println("Level 4.5");
+		for (int indx = switchPortList_1.size() - 1; indx >= 0; indx -= 2) {
 			// indx and indx-1 will always have the same switch DPID.
-			DatapathId switchDPID = switchPortList.get(indx).getNodeId();
+			switchDPID = switchPortList_1.get(indx).getNodeId();
 			IOFSwitch sw = switchService.getSwitch(switchDPID);
 
+			if (indx == dup_num) {
+				multicast_orig_outport = switchPortList_1.get(indx).getPortId();
+				continue;
+			}
+			
 			if (sw == null) {
 				if (log.isWarnEnabled()) {
 					log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
@@ -217,8 +266,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 				return srcSwitchIncluded;
 			}
 			
-			// need to build flow mod based on what type it is. Cannot set command later
-			System.out.println("Level 4");
 			OFFlowMod.Builder fmb;
 			switch (flowModCommand) {
 			case ADD:
@@ -246,13 +293,115 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
 
 			System.out.println("Level 6");
-			if (sw.getId().equals(pinSwitch)){
+			
+			/* set input and output ports on the switch */
+			OFPort outPort = switchPortList_1.get(indx).getPortId();
+			OFPort inPort = switchPortList_1.get(indx - 1).getPortId();
+			mb.setExact(MatchField.IN_PORT, inPort);
+			mb.setExact(MatchField.IPV4_DST, IPv4Address.of(FHostIP));
+			mb.setExact(MatchField.ETH_DST, MacAddress.of(FHostMAC));
+			aob.setPort(outPort);
+			aob.setMaxLen(Integer.MAX_VALUE);
+			actions.add(aob.build());
+			
+			System.out.println("Level 7");
+			if(FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG) {
+				Set<OFFlowModFlags> flags = new HashSet<>();
+				flags.add(OFFlowModFlags.SEND_FLOW_REM);
+				fmb.setFlags(flags);
+			}
+			
+			// compile
+			System.out.println("Level 8");
+			fmb.setMatch(mb.build()) // was match w/o modifying input port
+			.setActions(actions)
+			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+			.setBufferId(OFBufferId.NO_BUFFER)
+			.setCookie(cookie)
+			.setOutPort(outPort)
+			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
+
+			try {
+				if (log.isTraceEnabled()) {
+					log.trace("Pushing Route flowmod routeIndx={} " +
+							"sw={} inPort={} outPort={}",
+							new Object[] {indx,
+							sw,
+							fmb.getMatch().get(MatchField.IN_PORT),
+							outPort });
+				}
+				System.out.println("Level 9");
+				messageDamper.write(sw, fmb.build());
+				if (doFlush) {
+					sw.flush();
+				}
+
+				// Push the packet out the source switch
+				System.out.println("Level 10");
+				if (sw.getId().equals(pinSwitch)) {
+				//if (sw.getId().equals(multicast_point)) {
+					// TODO: Instead of doing a packetOut here we could also
+					// send a flowMod with bufferId set....
+					System.out.println("Level 10.1");
+					pushPacket(sw, match, pi, OFPort.TABLE);
+					srcSwitchIncluded = true;
+				}
+			} catch (IOException e) {
+				log.error("Failure writing flow mod", e);
+			}
+		}
+		
+		System.out.println(dup_num);
+		System.out.println("Level 4.5");
+		for (int indx = switchPortList_2.size() - 1; indx >= dup_num; indx -= 2) {
+			// indx and indx-1 will always have the same switch DPID.
+			switchDPID = switchPortList_2.get(indx).getNodeId();
+			IOFSwitch sw = switchService.getSwitch(switchDPID);
+
+			if (sw == null) {
+				if (log.isWarnEnabled()) {
+					log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
+				}
+				return srcSwitchIncluded;
+			}
+			
+			// need to build flow mod based on what type it is. Cannot set command later
+
+			OFFlowMod.Builder fmb;
+			switch (flowModCommand) {
+			case ADD:
+				fmb = sw.getOFFactory().buildFlowAdd();
+				break;
+			case DELETE:
+				fmb = sw.getOFFactory().buildFlowDelete();
+				break;
+			case DELETE_STRICT:
+				fmb = sw.getOFFactory().buildFlowDeleteStrict();
+				break;
+			case MODIFY:
+				fmb = sw.getOFFactory().buildFlowModify();
+				break;
+			default:
+				log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
+			case MODIFY_STRICT:
+				fmb = sw.getOFFactory().buildFlowModifyStrict();
+				break;			
+			}
+			
+			System.out.println("Level 5");
+			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
+			List<OFAction> actions = new ArrayList<OFAction>();
+			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
+
+			System.out.println("Level 6");
+			if (sw.getId().equals(multicast_point)){
 				OFActions action = sw.getOFFactory().actions();
 				OFOxms oxms = sw.getOFFactory().oxms();
 				
 				OFActionOutput output = action.buildOutput()
 					    .setMaxLen(0xFFffFFff)
-					    .setPort(OFPort.of(3))
+					    .setPort(multicast_orig_outport) // PROBLEM
 					    .build();
 				actions.add(output);
 				
@@ -278,10 +427,12 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			}
 			
 			/* set input and output ports on the switch */
-			OFPort outPort = switchPortList.get(indx).getPortId();
-			OFPort inPort = switchPortList.get(indx - 1).getPortId();
+			OFPort outPort = switchPortList_2.get(indx).getPortId();
+			OFPort inPort = switchPortList_2.get(indx - 1).getPortId();
+			//mb.setExact(MatchField.IN_PORT, OFPort.ANY);
 			mb.setExact(MatchField.IN_PORT, inPort);
-			if (!sw.getId().equals(pinSwitch)) {
+			if (!sw.getId().equals(multicast_point)) {
+				//mb.setExact(MatchField.IN_PORT, inPort);
 				mb.setExact(MatchField.IPV4_DST, IPv4Address.of(RHostIP));
 				mb.setExact(MatchField.ETH_DST, MacAddress.of(RHostMAC));
 			}
@@ -325,6 +476,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 				// Push the packet out the source switch
 				System.out.println("Level 10");
 				if (sw.getId().equals(pinSwitch)) {
+				//if (sw.getId().equals(multicast_point)) {
 					// TODO: Instead of doing a packetOut here we could also
 					// send a flowMod with bufferId set....
 					System.out.println("Level 10.1");
@@ -335,7 +487,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 				log.error("Failure writing flow mod", e);
 			}
 		}
-
 		return srcSwitchIncluded;
 	}
 	
@@ -453,7 +604,9 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 					System.out.println("Level 2");
 					if (dstIp.toString().equals(FHostIP)) {
 						IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-						IDevice dstDevice = null;
+						IDevice dstDevice_1 = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
+						FHostMAC = dstDevice_1.getMACAddressString();
+						IDevice dstDevice_2 = null;
 						Collection<? extends IDevice> allDevice = deviceService.getAllDevices();
 						System.out.println("Level 2.3");
 						for (IDevice testDevice : allDevice) {
@@ -468,7 +621,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 									//if (deviceMAC.equals(RHostMAC)) {
 									if (deviceIP[0].toString().equals(RHostIP)) {
 										System.out.println("Level 2.5");
-										dstDevice = testDevice;
+										dstDevice_2 = testDevice;
 										RHostMAC = deviceMAC;
 										System.out.println(RHostMAC);
 										break;
@@ -482,16 +635,18 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 								continue;
 						}
 						System.out.println("Level 2.8");
-						if ((dstDevice != null) && (srcDevice != null)) {
+						if ((dstDevice_1 != null) && (dstDevice_2 != null) && (srcDevice != null)) {
 							System.out.println("Level 3");
 							SwitchPort[] srcSwitchPort = srcDevice.getAttachmentPoints();
 							System.out.println("Level 3.4");
-							SwitchPort[] dstSwitchPort = dstDevice.getAttachmentPoints();
+							SwitchPort[] dstSwitchPort_1 = dstDevice_1.getAttachmentPoints();
+							SwitchPort[] dstSwitchPort_2 = dstDevice_2.getAttachmentPoints();
 							System.out.println("Level 3.5");
-							Route routeIn = routingEngine.getRoute(srcSwitchPort[0].getSwitchDPID(), srcSwitchPort[0].getPort(), dstSwitchPort[0].getSwitchDPID(), dstSwitchPort[0].getPort(), U64.of(0));
+							Route route_1 = routingEngine.getRoute(srcSwitchPort[0].getSwitchDPID(), srcSwitchPort[0].getPort(), dstSwitchPort_1[0].getSwitchDPID(), dstSwitchPort_1[0].getPort(), U64.of(0));
+							Route route_2 = routingEngine.getRoute(srcSwitchPort[0].getSwitchDPID(), srcSwitchPort[0].getPort(), dstSwitchPort_2[0].getSwitchDPID(), dstSwitchPort_2[0].getPort(), U64.of(0));
 							System.out.println("Level 3.6");
 							
-							if (routeIn != null) {
+							if ((route_1 != null) && (route_2 != null)) {
 								System.out.println("Level 3.7");
 								U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
@@ -501,7 +656,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 								System.out.println("Level 3.8");
 								
 								if (srcSwitchPort[0].getSwitchDPID() == sw.getId()){
-									pushRoute(routeIn, match, pin, sw.getId(), cookie,
+									pushRoute(route_1, route_2, match, pin, sw.getId(), cookie,
 										cntx, requestFlowRemovedNotifn, false,
 										OFFlowModCommand.ADD);
 								}
