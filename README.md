@@ -1,9 +1,10 @@
 # SDN_multicast_replication
-Using Software Defined Network, and then implement multicast module on replication.
+# Using Software Defined Network, and then implement multicast module on replication.
+# 
 
 -
 environment :
--  Ubuntu 14.04
+-  Ubuntu 15.04
 -  floodlight 1.1
 -  OpenFlow13
 -  Mininet
