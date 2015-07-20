@@ -344,7 +344,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 					// TODO: Instead of doing a packetOut here we could also
 					// send a flowMod with bufferId set....
 					System.out.println("Level 10.1");
-					pushPacket(sw, match, pi, OFPort.TABLE);
+					pushPacket(sw, match, pi, OFPort.NORMAL);
 					srcSwitchIncluded = true;
 				}
 			} catch (IOException e) {
@@ -480,7 +480,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 					// TODO: Instead of doing a packetOut here we could also
 					// send a flowMod with bufferId set....
 					System.out.println("Level 10.1");
-					pushPacket(sw, match, pi, OFPort.TABLE);
+					pushPacket(sw, match, pi, OFPort.NORMAL);
 					srcSwitchIncluded = true;
 				}
 			} catch (IOException e) {
