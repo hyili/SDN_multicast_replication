@@ -2,6 +2,13 @@
 Using Software Defined Network, and then implement multicast module on replication.
 
 -
+environment :
+-  Ubuntu 14.04
+-  floodlight 1.1
+-  OpenFlow13
+-  Mininet
+
+-
 floodlight :
 -  just run it
 -  default main server ip : 10.0.0.1
