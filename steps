@@ -1,0 +1,21 @@
+>sudo passwd
+>su
+>apt-get install git mininet openjdk-7-jre openjdk-7-jdk python vim eclipse
+>update-alternatives --config java
+>update-alternatives --config javac
+>wget https://github.com/floodlight/floodlight/archive/v1.1.zip
+>cd ../
+>chown -R <username>:<username> floodlight-1.1
+>exit
+>unzip v1.1.zip
+>cd floodlight-1.1
+>make
+>ant eclipse
+>git clone https://github.com/hyili/SDN_multicast_replication.git
+
+open eclipse
+follow the lab4 spec
+then copy the file into net.floodlightcontroller.headerextract
+
+final:
+run->Floodlight-Default-Conf
