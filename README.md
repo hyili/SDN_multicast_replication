@@ -11,15 +11,16 @@
 *  Openjdk-7
 
 ### Function :
-*  Main server and backup server can be any host and any ip in any topologies.
-*  Client can also be each of them.
-*  Analyze the routes to both main server and backup server, then find the multicast point to insert the multicast rule.
+*  Main server and backup server can be any host and any ip in any given topologies.
+*  Client can also be each of host in topology.
+*  Reduce the bandwidth waste by multicast.
 *  Restapi can edit the main server's and backup server's ip addresses, and can show the current settings.
 *  More backup servers -- hard working
   *  First, build a multicast tree with self-defined structure to improve the efficient of inserting the rules.
   *  Then, record the branch point which is the place where multicast rule insert into and assign each server a vlan-id.
   *  Finally, we can then insert the rule one by one from parent to leaves.
-*  QoS of routing policy -- hard working
+*  QoS of routing policy -- hard working  
+  *  Detect bottleneck bandwidth of the route and choose the maximum one.
   *  Search for suitable floodlight function.
 *  Reliable udp on multicsat -- hard working
   *  First, set a reliable udp main server, a reliable udp backup server and a reliable udp client.
