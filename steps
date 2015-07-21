@@ -4,13 +4,13 @@
 >update-alternatives --config java
 >update-alternatives --config javac
 >wget https://github.com/floodlight/floodlight/archive/v1.1.zip
->cd ../
+>unzip v1.1.zip
 >chown -R <username>:<username> floodlight-1.1
 >exit
->unzip v1.1.zip
 >cd floodlight-1.1
 >make
 >ant eclipse
+>cd ../
 >git clone https://github.com/hyili/SDN_multicast_replication.git
 
 open eclipse
