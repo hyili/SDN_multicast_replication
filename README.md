@@ -26,3 +26,12 @@ module restapi : (2 methods)
 
 -  curl :
 >  curl -d '{"RHostIP":"(main server ip)", "FHostIP":"(backup server ip)"}' http://(floodlight ip)/wm/headerextract/ipspecifier/json
+
+-
+advanced restapi : (function not finished)
+-  url :
+>  http://(floodlight ip):8080/wm/headerextract/ipspecifier/add/(other new backup server ip)/json  
+>  http://(floodlight ip):8080/wm/headerextract/ipspecifier/del/(old backup server ip)/json
+
+-  curl :
+>  curl -d '{"AddHostIP":"(other new backup server ip)", "DelHostIP":"old backup server ip"}' http://(floodlight ip)/wm/headerextract/ipspecifier/json
