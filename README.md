@@ -4,7 +4,7 @@ Using Software Defined Network, and then implement multicast module on replicati
 -
 environment :
 -  Ubuntu 15.04
--  floodlight 1.1
+-  Floodlight 1.1
 -  OpenFlow13
 -  Mininet
 
