@@ -81,11 +81,11 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	protected IFloodlightProviderService floodlightProvider;
 	protected Set<Long> macAddresses;
 	protected static Logger logger;
-	protected OFMessageDamper messageDamper;
-	protected IRoutingService routingEngine;
-	protected IDeviceService deviceService;
-	protected IOFSwitchService switchService;
-	protected IRestApiService restapi; 
+	protected static OFMessageDamper messageDamper;
+	protected static IRoutingService routingEngine;
+	protected static IDeviceService deviceService;
+	protected static IOFSwitchService switchService;
+	protected static IRestApiService restapi; 
 	protected static Logger log = LoggerFactory.getLogger(HeaderExtract.class);
 	public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 0;  //  sec
 	public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0;  //  infinite
@@ -94,7 +94,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	
 	public static final int FORWARDING_APP_ID = 2;
 	public static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
-	protected final short FLOWMOD_DEFAULT_PRIORITY = Short.MAX_VALUE;
+	protected static final short FLOWMOD_DEFAULT_PRIORITY = Short.MAX_VALUE;
 	public static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
 	public static boolean FLOWMOD_DEFAULT_MATCH_VLAN = false;
 	public static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
@@ -106,8 +106,8 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	public static final String STR_RHostIP = "RHostIP";
 	public static String FHostIP = "10.0.0.2";
 	public static String RHostIP = "10.0.0.1";
-	protected String FHostMAC = "";
-	protected String RHostMAC = "";
+	protected static String FHostMAC = "";
+	protected static String RHostMAC = "";
 	
 	@Override
 	public String getName() {
@@ -141,16 +141,13 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		return "/wm/headerextract";
 	}
 	
-	private void pushPacket(IOFSwitch sw, Match match, OFPacketIn pi, OFPort outport) {
+	/*private void pushPacket(IOFSwitch sw, Match match, OFPacketIn pi, OFPort outport) {
 		if (pi == null) {
 			return;
 		}
 
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
-		// The assumption here is (sw) is the switch that generated the
-		// packet-in. If the input port is the same as output port, then
-		// the packet-out should be ignored.
 		if (inPort.equals(outport)) {
 			if (log.isDebugEnabled()) {
 				log.debug("Attempting to do packet-out to the same " +
@@ -216,9 +213,9 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 
 		//counterPacketOut.increment();
 		sw.write(pob.build());
-	}
+	}*/
 	
-	public boolean pushRoute(Route route_1, Route route_2, Match match, OFPacketIn pi,
+	/*public boolean pushRoute(Route route_1, Route route_2, Match match, OFPacketIn pi,
 			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
 			boolean reqeustFlowRemovedNotifn, boolean doFlush,
 			OFFlowModCommand flowModCommand) {
@@ -295,7 +292,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			System.out.println("Level 6");
 			
 			/* set input and output ports on the switch */
-			OFPort outPort = switchPortList_1.get(indx).getPortId();
+			/*OFPort outPort = switchPortList_1.get(indx).getPortId();
 			OFPort inPort = switchPortList_1.get(indx - 1).getPortId();
 			mb.setExact(MatchField.IN_PORT, inPort);
 			mb.setExact(MatchField.IPV4_DST, IPv4Address.of(FHostIP));
@@ -427,12 +424,10 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			}
 			
 			/* set input and output ports on the switch */
-			OFPort outPort = switchPortList_2.get(indx).getPortId();
+			/*OFPort outPort = switchPortList_2.get(indx).getPortId();
 			OFPort inPort = switchPortList_2.get(indx - 1).getPortId();
-			//mb.setExact(MatchField.IN_PORT, OFPort.ANY);
 			mb.setExact(MatchField.IN_PORT, inPort);
 			if (!sw.getId().equals(multicast_point)) {
-				//mb.setExact(MatchField.IN_PORT, inPort);
 				mb.setExact(MatchField.IPV4_DST, IPv4Address.of(RHostIP));
 				mb.setExact(MatchField.ETH_DST, MacAddress.of(RHostMAC));
 			}
@@ -488,7 +483,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			}
 		}
 		return srcSwitchIncluded;
-	}
+	}*/
 	
 	protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, FloodlightContext cntx) {
 		// The packet in match will only contain the port number.
@@ -601,26 +596,23 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 				TransportPort dstPort = udp.getDestinationPort();
 				
 				if (dstPort.toString().equals(PORT)) {
-					System.out.println("Level 2");
+					System.out.println("Packet dst port is "+PORT);
 					if (dstIp.toString().equals(FHostIP)) {
 						IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 						IDevice dstDevice_1 = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
 						FHostMAC = dstDevice_1.getMACAddressString();
 						IDevice dstDevice_2 = null;
 						Collection<? extends IDevice> allDevice = deviceService.getAllDevices();
-						System.out.println("Level 2.3");
+						System.out.println("** Start to find the dst device **");
 						for (IDevice testDevice : allDevice) {
 							if (testDevice != null) {
 								IPv4Address[] deviceIP = testDevice.getIPv4Addresses();  //  IP can't be fetched correctly
 								String deviceMAC = testDevice.getMACAddressString();
 								try {
-									//System.out.println(deviceMAC);
 									System.out.println(deviceIP[0].toString());
-									//System.out.println(RHostMAC);
 									System.out.println(RHostIP);
-									//if (deviceMAC.equals(RHostMAC)) {
 									if (deviceIP[0].toString().equals(RHostIP)) {
-										System.out.println("Level 2.5");
+										System.out.println("Find it");
 										dstDevice_2 = testDevice;
 										RHostMAC = deviceMAC;
 										System.out.println(RHostMAC);
@@ -634,34 +626,30 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 							else
 								continue;
 						}
-						System.out.println("Level 2.8");
+						System.out.println("** Start to find the shortest route **");
 						if ((dstDevice_1 != null) && (dstDevice_2 != null) && (srcDevice != null)) {
-							System.out.println("Level 3");
 							SwitchPort[] srcSwitchPort = srcDevice.getAttachmentPoints();
-							System.out.println("Level 3.4");
 							SwitchPort[] dstSwitchPort_1 = dstDevice_1.getAttachmentPoints();
 							SwitchPort[] dstSwitchPort_2 = dstDevice_2.getAttachmentPoints();
-							System.out.println("Level 3.5");
 							Route route_1 = routingEngine.getRoute(srcSwitchPort[0].getSwitchDPID(), srcSwitchPort[0].getPort(), dstSwitchPort_1[0].getSwitchDPID(), dstSwitchPort_1[0].getPort(), U64.of(0));
 							Route route_2 = routingEngine.getRoute(srcSwitchPort[0].getSwitchDPID(), srcSwitchPort[0].getPort(), dstSwitchPort_2[0].getSwitchDPID(), dstSwitchPort_2[0].getPort(), U64.of(0));
-							System.out.println("Level 3.6");
 							
 							if ((route_1 != null) && (route_2 != null)) {
-								System.out.println("Level 3.7");
+								System.out.println("Find it");
 								U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
 								Match match = createMatchFromPacket(sw, inPort, cntx);
 								boolean requestFlowRemovedNotifn = false;
 								
-								System.out.println("Level 3.8");
+								System.out.println("** Start to push the rule **");
 								
 								if (srcSwitchPort[0].getSwitchDPID() == sw.getId()){
-									pushRoute(route_1, route_2, match, pin, sw.getId(), cookie,
+									MulticastRoutingPolicy.pushRoute(route_1, route_2, match, pin, sw.getId(), cookie,
 										cntx, requestFlowRemovedNotifn, false,
 										OFFlowModCommand.ADD);
 								}
 
-								System.out.println("Final Level");
+								System.out.println("** Finish **");
 							}
 
 						}
