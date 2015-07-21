@@ -17,7 +17,7 @@
 *  Restapi can edit the main server's and backup server's ip addresses, and can show the current settings
 *  More backup servers -- hard working
 *  QoS of routing policy -- hard working
-*  Reliable multicsat udp -- hard working
+*  Reliable udp on multicsat -- hard working
 *  Byte level file replication OR block level replication -- hard working
 
 ### Floodlight :
