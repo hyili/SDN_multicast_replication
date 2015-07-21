@@ -100,7 +100,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	public static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
 	public static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
 	
-	
 	protected String PORT = "5134";
 	public static final String STR_FHostIP = "FHostIP";
 	public static final String STR_RHostIP = "RHostIP";
@@ -111,20 +110,16 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
 		return HeaderExtract.class.getSimpleName();
-		//return null;
 	}
 
 	@Override
 	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 	
@@ -141,353 +136,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		return "/wm/headerextract";
 	}
 	
-	/*private void pushPacket(IOFSwitch sw, Match match, OFPacketIn pi, OFPort outport) {
-		if (pi == null) {
-			return;
-		}
-
-		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
-
-		if (inPort.equals(outport)) {
-			if (log.isDebugEnabled()) {
-				log.debug("Attempting to do packet-out to the same " +
-						"interface as packet-in. Dropping packet. " +
-						" SrcSwitch={}, match = {}, pi={}",
-						new Object[]{sw, match, pi});
-				return;
-			}
-		}
-
-		if (log.isTraceEnabled()) {
-			log.trace("PacketOut srcSwitch={} match={} pi={}",
-					new Object[] {sw, match, pi});
-		}
-
-		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-
-		// set actions
-		List<OFAction> actions = new ArrayList<OFAction>();
-		OFActions action = sw.getOFFactory().actions();
-		OFOxms oxms = sw.getOFFactory().oxms();
-		
-		OFActionSetField setDlDst = action.buildSetField()
-		.setField(
-				oxms.buildEthDst()
-				.setValue(MacAddress.of(RHostMAC))
-				.build()
-		)
-		.build();
-		actions.add(setDlDst);
-
-		OFActionSetField setNwDst = action.buildSetField()
-		.setField(
-				oxms.buildIpv4Dst()
-				.setValue(IPv4Address.of(RHostIP))
-				.build()
-		)
-		.build();
-		actions.add(setNwDst);
-		
-		actions.add(sw.getOFFactory().actions().buildOutput().setPort(outport).setMaxLen(0xffFFffFF).build());
-		
-		pob.setActions(actions);
-
-		// If the switch doens't support buffering set the buffer id to be none
-		// otherwise it'll be the the buffer id of the PacketIn
-		if (sw.getBuffers() == 0) {
-			// We set the PI buffer id here so we don't have to check again below
-			pi = pi.createBuilder().setBufferId(OFBufferId.NO_BUFFER).build();
-			pob.setBufferId(OFBufferId.NO_BUFFER);
-		} else {
-			pob.setBufferId(pi.getBufferId());
-		}
-
-		pob.setInPort(inPort);
-
-		// If the buffer id is none or the switch doesn's support buffering
-		// we send the data with the packet out
-		if (pi.getBufferId() == OFBufferId.NO_BUFFER) {
-			byte[] packetData = pi.getData();
-			pob.setData(packetData);
-		}
-
-		//counterPacketOut.increment();
-		sw.write(pob.build());
-	}*/
-	
-	/*public boolean pushRoute(Route route_1, Route route_2, Match match, OFPacketIn pi,
-			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-			boolean reqeustFlowRemovedNotifn, boolean doFlush,
-			OFFlowModCommand flowModCommand) {
-
-		boolean srcSwitchIncluded = false;
-
-		List<NodePortTuple> switchPortList_1 = route_1.getPath();
-		List<NodePortTuple> switchPortList_2 = route_2.getPath();
-		int sP1_size = switchPortList_1.size();
-		int sP2_size = switchPortList_2.size();
-		int dup_num = -1;
-		DatapathId multicast_point = null;
-		OFPort multicast_orig_outport = OFPort.of(0);
-
-		DatapathId switchDPID = null;
-		DatapathId switchDPID_1 = null;
-		DatapathId switchDPID_2 = null;
-		System.out.println("Level 4");
-		for (int indx_1 = 1, indx_2 = 1; indx_1 <= sP1_size && indx_2 <= sP2_size; indx_1 += 2, indx_2 += 2) {
-			System.out.println("Level~~~~");
-			switchDPID_1 = switchPortList_1.get(indx_1).getNodeId();
-			switchDPID_2 = switchPortList_2.get(indx_2).getNodeId();
-			System.out.println(switchDPID_1);
-			System.out.println(switchDPID_2);
-			if (switchDPID_1.equals(switchDPID_2))
-				dup_num = dup_num + 2;
-		}
-		multicast_point = switchPortList_1.get(dup_num).getNodeId();
-		
-		System.out.println("Level 4.5");
-		for (int indx = switchPortList_1.size() - 1; indx >= 0; indx -= 2) {
-			// indx and indx-1 will always have the same switch DPID.
-			switchDPID = switchPortList_1.get(indx).getNodeId();
-			IOFSwitch sw = switchService.getSwitch(switchDPID);
-
-			if (indx == dup_num) {
-				multicast_orig_outport = switchPortList_1.get(indx).getPortId();
-				continue;
-			}
-			
-			if (sw == null) {
-				if (log.isWarnEnabled()) {
-					log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
-				}
-				return srcSwitchIncluded;
-			}
-			
-			OFFlowMod.Builder fmb;
-			switch (flowModCommand) {
-			case ADD:
-				fmb = sw.getOFFactory().buildFlowAdd();
-				break;
-			case DELETE:
-				fmb = sw.getOFFactory().buildFlowDelete();
-				break;
-			case DELETE_STRICT:
-				fmb = sw.getOFFactory().buildFlowDeleteStrict();
-				break;
-			case MODIFY:
-				fmb = sw.getOFFactory().buildFlowModify();
-				break;
-			default:
-				log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
-			case MODIFY_STRICT:
-				fmb = sw.getOFFactory().buildFlowModifyStrict();
-				break;			
-			}
-			
-			System.out.println("Level 5");
-			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-			List<OFAction> actions = new ArrayList<OFAction>();
-			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
-
-			System.out.println("Level 6");
-			
-			/* set input and output ports on the switch */
-			/*OFPort outPort = switchPortList_1.get(indx).getPortId();
-			OFPort inPort = switchPortList_1.get(indx - 1).getPortId();
-			mb.setExact(MatchField.IN_PORT, inPort);
-			mb.setExact(MatchField.IPV4_DST, IPv4Address.of(FHostIP));
-			mb.setExact(MatchField.ETH_DST, MacAddress.of(FHostMAC));
-			aob.setPort(outPort);
-			aob.setMaxLen(Integer.MAX_VALUE);
-			actions.add(aob.build());
-			
-			System.out.println("Level 7");
-			if(FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG) {
-				Set<OFFlowModFlags> flags = new HashSet<>();
-				flags.add(OFFlowModFlags.SEND_FLOW_REM);
-				fmb.setFlags(flags);
-			}
-			
-			// compile
-			System.out.println("Level 8");
-			fmb.setMatch(mb.build()) // was match w/o modifying input port
-			.setActions(actions)
-			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-			.setBufferId(OFBufferId.NO_BUFFER)
-			.setCookie(cookie)
-			.setOutPort(outPort)
-			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
-
-			try {
-				if (log.isTraceEnabled()) {
-					log.trace("Pushing Route flowmod routeIndx={} " +
-							"sw={} inPort={} outPort={}",
-							new Object[] {indx,
-							sw,
-							fmb.getMatch().get(MatchField.IN_PORT),
-							outPort });
-				}
-				System.out.println("Level 9");
-				messageDamper.write(sw, fmb.build());
-				if (doFlush) {
-					sw.flush();
-				}
-
-				// Push the packet out the source switch
-				System.out.println("Level 10");
-				if (sw.getId().equals(pinSwitch)) {
-				//if (sw.getId().equals(multicast_point)) {
-					// TODO: Instead of doing a packetOut here we could also
-					// send a flowMod with bufferId set....
-					System.out.println("Level 10.1");
-					pushPacket(sw, match, pi, OFPort.NORMAL);
-					srcSwitchIncluded = true;
-				}
-			} catch (IOException e) {
-				log.error("Failure writing flow mod", e);
-			}
-		}
-		
-		System.out.println(dup_num);
-		System.out.println("Level 4.5");
-		for (int indx = switchPortList_2.size() - 1; indx >= dup_num; indx -= 2) {
-			// indx and indx-1 will always have the same switch DPID.
-			switchDPID = switchPortList_2.get(indx).getNodeId();
-			IOFSwitch sw = switchService.getSwitch(switchDPID);
-
-			if (sw == null) {
-				if (log.isWarnEnabled()) {
-					log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
-				}
-				return srcSwitchIncluded;
-			}
-			
-			// need to build flow mod based on what type it is. Cannot set command later
-
-			OFFlowMod.Builder fmb;
-			switch (flowModCommand) {
-			case ADD:
-				fmb = sw.getOFFactory().buildFlowAdd();
-				break;
-			case DELETE:
-				fmb = sw.getOFFactory().buildFlowDelete();
-				break;
-			case DELETE_STRICT:
-				fmb = sw.getOFFactory().buildFlowDeleteStrict();
-				break;
-			case MODIFY:
-				fmb = sw.getOFFactory().buildFlowModify();
-				break;
-			default:
-				log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
-			case MODIFY_STRICT:
-				fmb = sw.getOFFactory().buildFlowModifyStrict();
-				break;			
-			}
-			
-			System.out.println("Level 5");
-			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-			List<OFAction> actions = new ArrayList<OFAction>();
-			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
-
-			System.out.println("Level 6");
-			if (sw.getId().equals(multicast_point)){
-				OFActions action = sw.getOFFactory().actions();
-				OFOxms oxms = sw.getOFFactory().oxms();
-				
-				OFActionOutput output = action.buildOutput()
-					    .setMaxLen(0xFFffFFff)
-					    .setPort(multicast_orig_outport) // PROBLEM
-					    .build();
-				actions.add(output);
-				
-				System.out.println("Level 6.1");
-				OFActionSetField setDlDst = action.buildSetField()
-						.setField(
-								oxms.buildEthDst()
-								.setValue(MacAddress.of(RHostMAC))
-								.build()
-						)
-						.build();
-				actions.add(setDlDst);
-			
-				System.out.println("Level 6.2");
-				OFActionSetField setNwDst = action.buildSetField()
-						.setField(
-								oxms.buildIpv4Dst()
-								.setValue(IPv4Address.of(RHostIP))
-								.build()
-						)
-						.build();
-				actions.add(setNwDst);
-			}
-			
-			/* set input and output ports on the switch */
-			/*OFPort outPort = switchPortList_2.get(indx).getPortId();
-			OFPort inPort = switchPortList_2.get(indx - 1).getPortId();
-			mb.setExact(MatchField.IN_PORT, inPort);
-			if (!sw.getId().equals(multicast_point)) {
-				mb.setExact(MatchField.IPV4_DST, IPv4Address.of(RHostIP));
-				mb.setExact(MatchField.ETH_DST, MacAddress.of(RHostMAC));
-			}
-			aob.setPort(outPort);
-			aob.setMaxLen(Integer.MAX_VALUE);
-			actions.add(aob.build());
-			
-			System.out.println("Level 7");
-			if(FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG) {
-				Set<OFFlowModFlags> flags = new HashSet<>();
-				flags.add(OFFlowModFlags.SEND_FLOW_REM);
-				fmb.setFlags(flags);
-			}
-			
-			// compile
-			System.out.println("Level 8");
-			fmb.setMatch(mb.build()) // was match w/o modifying input port
-			.setActions(actions)
-			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-			.setBufferId(OFBufferId.NO_BUFFER)
-			.setCookie(cookie)
-			.setOutPort(outPort)
-			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
-
-			try {
-				if (log.isTraceEnabled()) {
-					log.trace("Pushing Route flowmod routeIndx={} " +
-							"sw={} inPort={} outPort={}",
-							new Object[] {indx,
-							sw,
-							fmb.getMatch().get(MatchField.IN_PORT),
-							outPort });
-				}
-				System.out.println("Level 9");
-				messageDamper.write(sw, fmb.build());
-				if (doFlush) {
-					sw.flush();
-				}
-
-				// Push the packet out the source switch
-				System.out.println("Level 10");
-				if (sw.getId().equals(pinSwitch)) {
-				//if (sw.getId().equals(multicast_point)) {
-					// TODO: Instead of doing a packetOut here we could also
-					// send a flowMod with bufferId set....
-					System.out.println("Level 10.1");
-					pushPacket(sw, match, pi, OFPort.NORMAL);
-					srcSwitchIncluded = true;
-				}
-			} catch (IOException e) {
-				log.error("Failure writing flow mod", e);
-			}
-		}
-		return srcSwitchIncluded;
-	}*/
-	
 	protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, FloodlightContext cntx) {
-		// The packet in match will only contain the port number.
-		// We need to add in specifics for the hosts we're routing between.
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
 		MacAddress srcMac = eth.getSourceMACAddress();
@@ -507,9 +156,8 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			}
 		}
 
-		// TODO Detect switch type and match to create hardware-implemented flow
-		// TODO Allow for IPv6 matches
-		if (eth.getEtherType() == EthType.IPv4) { /* shallow check for equality is okay for EthType */
+
+		if (eth.getEtherType() == EthType.IPv4) {
 			IPv4 ip = (IPv4) eth.getPayload();
 			IPv4Address srcIp = ip.getSourceAddress();
 			IPv4Address dstIp = ip.getDestinationAddress();
@@ -521,10 +169,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 			}
 
 			if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
-				/*
-				 * Take care of the ethertype if not included earlier,
-				 * since it's a prerequisite for transport ports.
-				 */
 				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
 					mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
 				}
@@ -541,7 +185,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 					.setExact(MatchField.UDP_DST, udp.getDestinationPort());
 				}
 			}
-		} else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
+		} else if (eth.getEtherType() == EthType.ARP) {
 			mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
 		}
 		return mb.build();
@@ -550,7 +194,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	@Override
 	public net.floodlightcontroller.core.IListener.Command receive(
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-		// TODO Auto-generated method stub
 		
 		OFPacketIn pin = (OFPacketIn) msg;
 		OFPort inPort = (pin.getVersion().compareTo(OFVersion.OF_13) < 0 ? pin.getInPort() : pin.getMatch().get(MatchField.IN_PORT));
@@ -563,10 +206,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		MacAddress dstMac = eth.getDestinationMACAddress();
 		VlanVid vlanId = VlanVid.ofVlan(eth.getVlanID());
 		
-		/*          
-		 * Check the ethertype of the Ethernet frame and retrieve the appropriate payload.
-		 * Note the shallow equality check. EthType caches and reuses instances for valid types.
-		*/
 		if (eth.getEtherType() == EthType.IPv4) {
 			/* We got an IPv4 packet; get the payload from Ethernet */
 			IPv4 ipv4 = (IPv4) eth.getPayload();
@@ -585,7 +224,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 				TransportPort dstPort = tcp.getDestinationPort();
 				short flags = tcp.getFlags();
 				
-				/* Your logic here! */
 			}
 			else if (ipv4.getProtocol().equals(IpProtocol.UDP)) {
 				/* We got a UDP packet; get the payload from IPv4 */
@@ -655,8 +293,6 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 						}
 					}
 				}
-				
-				/* Your logic here! */
 			}
 			else {
 				/* More to come here */
@@ -677,19 +313,16 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-		// TODO Auto-generated method stub
 		Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
 		l.add(IFloodlightProviderService.class);
 		l.add(IRoutingService.class);
