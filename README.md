@@ -7,6 +7,7 @@ environment :
 -  Floodlight 1.1
 -  OpenFlow13
 -  Mininet
+-  OpenVSwitch 2.3.1
 
 -
 floodlight :
