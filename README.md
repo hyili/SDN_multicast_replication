@@ -7,7 +7,8 @@
 *  OpenFlow13
 *  Mininet
 *  OpenVSwitch 2.3.1
-*  Eclipse 3.8
+*  Eclipse 3.8.1
+*  Openjdk-7
 
 ### floodlight :
 *  just run it
