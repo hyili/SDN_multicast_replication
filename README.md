@@ -20,8 +20,8 @@ mininet :
 
 -
 module restapi : (2 methods)
--  1.url :
+-  url :
 >  http://(floodlight ip):8080/wm/headerextract/ipspecifier/(main server ip)/(backup server ip)/json
 
--  2.curl :
+-  curl :
 >  curl -d '{"RHostIP":"(main server ip)", "FHostIP":"(backup server ip)"}' http://(floodlight ip)/wm/headerextract/ipspecifier/json
