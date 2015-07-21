@@ -56,7 +56,7 @@ public class PostIPSpecifierResource extends ServerResource {
 						post_check = false;
 					}
 					else if (HeaderExtract.AdditionalHostIP.add(temp.AddHostIP)) {
-						HeaderExtract.AddtionalIP++;
+						HeaderExtract.AdditionalIP++;
 						result = result + "\"AddHostIP\":\"OK\", ";
 					}
 					else {
@@ -75,8 +75,8 @@ public class PostIPSpecifierResource extends ServerResource {
 						result = result + "\"DelHostIP\":\"Illegal pattern\", ";
 						post_check = false;
 					}
-					else if (HeaderExtract.AdditionalHostIP.remove(temp.DelHostIP) && HeaderExtract.AddtionalIP > 0) {
-						HeaderExtract.AddtionalIP--;
+					else if (HeaderExtract.AdditionalHostIP.remove(temp.DelHostIP) && HeaderExtract.AdditionalIP > 0) {
+						HeaderExtract.AdditionalIP--;
 						result = result + "\"DelHostIP\":\"OK\", ";
 					}
 					else {

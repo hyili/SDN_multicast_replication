@@ -8,6 +8,7 @@ environment :
 -  OpenFlow13
 -  Mininet
 -  OpenVSwitch 2.3.1
+-  Eclipse 3.8
 
 -
 floodlight :
@@ -23,6 +24,7 @@ mininet :
 module restapi : (2 methods)
 -  url :
 >  http://(floodlight ip):8080/wm/headerextract/ipspecifier/(main server ip)/(backup server ip)/json
+>  http://(floodlight ip):8080/wm/headerextract/ipspecifier/show/json
 
 -  curl :
 >  curl -d '{"RHostIP":"(main server ip)", "FHostIP":"(backup server ip)"}' http://(floodlight ip)/wm/headerextract/ipspecifier/json

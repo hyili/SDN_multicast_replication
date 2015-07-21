@@ -23,8 +23,8 @@ public class DeleteBackupServerResource extends ServerResource {
 			if (Pattern.matches(HeaderExtract.IP_Regex, DelHostIP))
 				if (!HeaderExtract.AdditionalHostIP.contains(DelHostIP))
 					model.put("IP_Del", "Nothing to delete");
-				else if (HeaderExtract.AdditionalHostIP.remove(DelHostIP) && HeaderExtract.AddtionalIP > 0) {
-					HeaderExtract.AddtionalIP--;
+				else if (HeaderExtract.AdditionalHostIP.remove(DelHostIP) && HeaderExtract.AdditionalIP > 0) {
+					HeaderExtract.AdditionalIP--;
 					model.put("IP_Del", "OK");
 				}
 				else

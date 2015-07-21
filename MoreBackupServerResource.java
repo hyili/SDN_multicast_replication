@@ -24,7 +24,7 @@ public class MoreBackupServerResource extends ServerResource {
 				if (HeaderExtract.AdditionalHostIP.contains(AddHostIP))
 					model.put("IP_Add", "Already existed");
 				else if (HeaderExtract.AdditionalHostIP.add(AddHostIP)) {
-					HeaderExtract.AddtionalIP++;
+					HeaderExtract.AdditionalIP++;
 					model.put("IP_Add", "OK");
 				}
 				else

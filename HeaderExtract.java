@@ -107,7 +107,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	public static String FHostIP = "10.0.0.2";
 	public static String RHostIP = "10.0.0.1";
 	public static ArrayList<String> AdditionalHostIP = new ArrayList<String>();
-	public static int AddtionalIP = 0;
+	public static int AdditionalIP = 0;
 	
 	protected String PORT = "5134";
 	protected static String FHostMAC = "";
@@ -131,6 +131,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	@Get("json")
 	public Restlet getRestlet(Context context) {
 		Router router = new Router(context);
+		router.attach("/ipspecifier/show/json", ShowSettingResource.class);
 		router.attach("/ipspecifier/add/{" + STR_AddHostIP + "}/json", MoreBackupServerResource.class);
 		router.attach("/ipspecifier/del/{" + STR_DelHostIP + "}/json", DeleteBackupServerResource.class);
 		router.attach("/ipspecifier/{" + STR_RHostIP + "}/{" + STR_FHostIP + "}/json", IPSpecifierResource.class);
