@@ -1,6 +1,5 @@
 package net.floodlightcontroller.headerextract;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -100,11 +99,17 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	public static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
 	public static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
 	
-	protected String PORT = "5134";
 	public static final String STR_FHostIP = "FHostIP";
 	public static final String STR_RHostIP = "RHostIP";
+	public static final String STR_AddHostIP = "AddHostIP";
+	public static final String STR_DelHostIP = "DelHostIP";
+	public static final String IP_Regex = "^([1-9]?\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.([1-9]?\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.([1-9]?\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.([1-9]?\\d|1\\d\\d|2[0-4]\\d|25[0-5])$";
 	public static String FHostIP = "10.0.0.2";
 	public static String RHostIP = "10.0.0.1";
+	public static ArrayList<String> AdditionalHostIP = new ArrayList<String>();
+	public static int AddtionalIP = 0;
+	
+	protected String PORT = "5134";
 	protected static String FHostMAC = "";
 	protected static String RHostMAC = "";
 	
@@ -125,10 +130,12 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 	
 	@Get("json")
 	public Restlet getRestlet(Context context) {
-    	Router router = new Router(context);
-        router.attach("/ipspecifier/{" + STR_RHostIP + "}/{" + STR_FHostIP + "}/json", IPSpecifierResource.class);
-        router.attach("/ipspecifier/json", PostIPSpecifierResource.class);
-        return router;
+		Router router = new Router(context);
+		router.attach("/ipspecifier/add/{" + STR_AddHostIP + "}/json", MoreBackupServerResource.class);
+		router.attach("/ipspecifier/del/{" + STR_DelHostIP + "}/json", DeleteBackupServerResource.class);
+		router.attach("/ipspecifier/{" + STR_RHostIP + "}/{" + STR_FHostIP + "}/json", IPSpecifierResource.class);
+		router.attach("/ipspecifier/json", PostIPSpecifierResource.class);
+		return router;
 	}
 	
 	@Override
@@ -141,22 +148,22 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
 		MacAddress srcMac = eth.getSourceMACAddress();
 		MacAddress dstMac = eth.getDestinationMACAddress();
-
+		
 		Match.Builder mb = sw.getOFFactory().buildMatch();
 		mb.setExact(MatchField.IN_PORT, inPort);
-
+		
 		if (FLOWMOD_DEFAULT_MATCH_MAC) {
 			mb.setExact(MatchField.ETH_SRC, srcMac)
 			.setExact(MatchField.ETH_DST, dstMac);
 		}
-
+		
 		if (FLOWMOD_DEFAULT_MATCH_VLAN) {
 			if (!vlan.equals(VlanVid.ZERO)) {
 				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 			}
 		}
-
-
+		
+		
 		if (eth.getEtherType() == EthType.IPv4) {
 			IPv4 ip = (IPv4) eth.getPayload();
 			IPv4Address srcIp = ip.getSourceAddress();
@@ -167,7 +174,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 				.setExact(MatchField.IPV4_SRC, srcIp)
 				.setExact(MatchField.IPV4_DST, dstIp);
 			}
-
+			
 			if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
 				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
 					mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
@@ -201,7 +208,7 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		/* Retrieve the deserialized packet in message */
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		
-        /* Various getters and setters are exposed in Ethernet */
+		/* Various getters and setters are exposed in Ethernet */
 		MacAddress srcMac = eth.getSourceMACAddress();
 		MacAddress dstMac = eth.getDestinationMACAddress();
 		VlanVid vlanId = VlanVid.ofVlan(eth.getVlanID());
@@ -351,5 +358,4 @@ public class HeaderExtract implements IFloodlightModule, IOFMessageListener, Res
 		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
 		restapi.addRestletRoutable(this);
 	}
-
 }

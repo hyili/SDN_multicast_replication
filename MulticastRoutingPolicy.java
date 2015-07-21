@@ -33,14 +33,32 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
 public class MulticastRoutingPolicy {
+	private static int dup_num = -1;
+	private static DatapathId multicast_point = null;
+	
+	private static void newBackupServer(List<NodePortTuple> switchPortList_1, 
+			List<NodePortTuple> switchPortList_2) {
+		int sP1_size = switchPortList_1.size();
+		int sP2_size = switchPortList_2.size();
+		DatapathId switchDPID_1 = null;
+		DatapathId switchDPID_2 = null;
+		
+		for (int indx_1 = 1, indx_2 = 1; indx_1 <= sP1_size && indx_2 <= sP2_size; indx_1 += 2, indx_2 += 2) {
+			switchDPID_1 = switchPortList_1.get(indx_1).getNodeId();
+			switchDPID_2 = switchPortList_2.get(indx_2).getNodeId();
+			if (switchDPID_1.equals(switchDPID_2))
+				dup_num = dup_num + 2;
+		}
+		multicast_point = switchPortList_1.get(dup_num).getNodeId();
+	}
 	
 	private static void pushPacket(IOFSwitch sw, Match match, OFPacketIn pi, OFPort outport) {
 		if (pi == null) {
 			return;
 		}
-
+		
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
-
+		
 		if (inPort.equals(outport)) {
 			if (HeaderExtract.log.isDebugEnabled()) {
 				HeaderExtract.log.debug("Attempting to do packet-out to the same " +
@@ -50,14 +68,14 @@ public class MulticastRoutingPolicy {
 				return;
 			}
 		}
-
+		
 		if (HeaderExtract.log.isTraceEnabled()) {
 			HeaderExtract.log.trace("PacketOut srcSwitch={} match={} pi={}",
 					new Object[] {sw, match, pi});
 		}
-
+		
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-
+		
 		// set actions
 		List<OFAction> actions = new ArrayList<OFAction>();
 		OFActions action = sw.getOFFactory().actions();
@@ -71,7 +89,7 @@ public class MulticastRoutingPolicy {
 		)
 		.build();
 		actions.add(setDlDst);
-
+		
 		OFActionSetField setNwDst = action.buildSetField()
 		.setField(
 				oxms.buildIpv4Dst()
@@ -112,36 +130,22 @@ public class MulticastRoutingPolicy {
 			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
 			boolean reqeustFlowRemovedNotifn, boolean doFlush,
 			OFFlowModCommand flowModCommand) {
-
+		
 		boolean srcSwitchIncluded = false;
-
+		
 		List<NodePortTuple> switchPortList_1 = route_1.getPath();
 		List<NodePortTuple> switchPortList_2 = route_2.getPath();
-		int sP1_size = switchPortList_1.size();
-		int sP2_size = switchPortList_2.size();
-		int dup_num = -1;
-		DatapathId multicast_point = null;
 		OFPort multicast_orig_outport = OFPort.of(0);
-
+		
 		DatapathId switchDPID = null;
-		DatapathId switchDPID_1 = null;
-		DatapathId switchDPID_2 = null;
 		System.out.println("Comparing...");
-		for (int indx_1 = 1, indx_2 = 1; indx_1 <= sP1_size && indx_2 <= sP2_size; indx_1 += 2, indx_2 += 2) {
-			switchDPID_1 = switchPortList_1.get(indx_1).getNodeId();
-			switchDPID_2 = switchPortList_2.get(indx_2).getNodeId();
-			System.out.println(switchDPID_1);
-			System.out.println(switchDPID_2);
-			if (switchDPID_1.equals(switchDPID_2))
-				dup_num = dup_num + 2;
-		}
-		multicast_point = switchPortList_1.get(dup_num).getNodeId();
+		newBackupServer(switchPortList_1, switchPortList_2);
 		
 		for (int indx = switchPortList_1.size() - 1; indx >= 0; indx -= 2) {
 			// indx and indx-1 will always have the same switch DPID.
 			switchDPID = switchPortList_1.get(indx).getNodeId();
 			IOFSwitch sw = HeaderExtract.switchService.getSwitch(switchDPID);
-
+			
 			if (indx == dup_num) {
 				multicast_orig_outport = switchPortList_1.get(indx).getPortId();
 				continue;
@@ -178,7 +182,7 @@ public class MulticastRoutingPolicy {
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();
 			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
-
+			
 			/* set input and output ports on the switch */
 			OFPort outPort = switchPortList_1.get(indx).getPortId();
 			OFPort inPort = switchPortList_1.get(indx - 1).getPortId();
@@ -222,7 +226,6 @@ public class MulticastRoutingPolicy {
 				// Push the packet out the source switch
 				if (sw.getId().equals(pinSwitch)) {
 				//if (sw.getId().equals(multicast_point)) {
-					// TODO: Instead of doing a packetOut here we could also
 					// send a flowMod with bufferId set....
 					System.out.println("Packet-Out");
 					pushPacket(sw, match, pi, OFPort.NORMAL);
@@ -348,7 +351,6 @@ public class MulticastRoutingPolicy {
 				// Push the packet out the source switch
 				if (sw.getId().equals(pinSwitch)) {
 				//if (sw.getId().equals(multicast_point)) {
-					// TODO: Instead of doing a packetOut here we could also
 					// send a flowMod with bufferId set....
 					System.out.println("Packet-Out");
 					pushPacket(sw, match, pi, OFPort.NORMAL);
