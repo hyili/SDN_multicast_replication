@@ -33,24 +33,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
 public class MulticastRoutingPolicy {
-	private static int dup_num = -1;
-	private static DatapathId multicast_point = null;
-	
-	private static void newBackupServer(List<NodePortTuple> switchPortList_1, 
-			List<NodePortTuple> switchPortList_2) {
-		int sP1_size = switchPortList_1.size();
-		int sP2_size = switchPortList_2.size();
-		DatapathId switchDPID_1 = null;
-		DatapathId switchDPID_2 = null;
-		
-		for (int indx_1 = 1, indx_2 = 1; indx_1 <= sP1_size && indx_2 <= sP2_size; indx_1 += 2, indx_2 += 2) {
-			switchDPID_1 = switchPortList_1.get(indx_1).getNodeId();
-			switchDPID_2 = switchPortList_2.get(indx_2).getNodeId();
-			if (switchDPID_1.equals(switchDPID_2))
-				dup_num = dup_num + 2;
-		}
-		multicast_point = switchPortList_1.get(dup_num).getNodeId();
-	}
 	
 	private static void pushPacket(IOFSwitch sw, Match match, OFPacketIn pi, OFPort outport) {
 		if (pi == null) {
@@ -137,10 +119,25 @@ public class MulticastRoutingPolicy {
 		List<NodePortTuple> switchPortList_2 = route_2.getPath();
 		OFPort multicast_orig_outport = OFPort.of(0);
 		
-		DatapathId switchDPID = null;
-		System.out.println("Comparing...");
-		newBackupServer(switchPortList_1, switchPortList_2);
+		int dup_num = -1;
+		DatapathId multicast_point = null;
 		
+		System.out.println("Comparing...");
+		DatapathId switchDPID = null;
+		int sP1_size = switchPortList_1.size();
+		int sP2_size = switchPortList_2.size();
+		DatapathId switchDPID_1 = null;
+		DatapathId switchDPID_2 = null;
+		
+		for (int indx_1 = 1, indx_2 = 1; indx_1 <= sP1_size && indx_2 <= sP2_size; indx_1 += 2, indx_2 += 2) {
+			switchDPID_1 = switchPortList_1.get(indx_1).getNodeId();
+			switchDPID_2 = switchPortList_2.get(indx_2).getNodeId();
+			if (switchDPID_1.equals(switchDPID_2))
+				dup_num = dup_num + 2;
+		}
+		multicast_point = switchPortList_1.get(dup_num).getNodeId();
+		
+		System.out.println("1...");
 		for (int indx = switchPortList_1.size() - 1; indx >= 0; indx -= 2) {
 			// indx and indx-1 will always have the same switch DPID.
 			switchDPID = switchPortList_1.get(indx).getNodeId();
